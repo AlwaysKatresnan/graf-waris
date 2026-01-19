@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
+import * as d3 from 'd3';
 
 const WarisCalculator = () => {
   const [harta, setHarta] = useState(100000000);
@@ -32,7 +33,8 @@ const WarisCalculator = () => {
       bagian: 0,
       persentase: 0,
       warna: '#64748b',
-      fraksi: ''
+      fraksi: '',
+      id: 'pewaris'
     });
 
     // Pasangan (Istri/Suami) - dapat bagian tetap dulu
@@ -44,7 +46,8 @@ const WarisCalculator = () => {
         bagian: bagianIstri,
         persentase: adaAnak ? 12.5 : 25,
         warna: '#ec4899',
-        fraksi: adaAnak ? '1/8' : '1/4'
+        fraksi: adaAnak ? '1/8' : '1/4',
+        id: 'istri'
       });
       sisaHarta -= bagianIstri;
     }
@@ -57,7 +60,8 @@ const WarisCalculator = () => {
         bagian: bagianSuami,
         persentase: adaAnak ? 25 : 50,
         warna: '#3b82f6',
-        fraksi: adaAnak ? '1/4' : '1/2'
+        fraksi: adaAnak ? '1/4' : '1/2',
+        id: 'suami'
       });
       sisaHarta -= bagianSuami;
     }
@@ -71,7 +75,8 @@ const WarisCalculator = () => {
         bagian: bagianAyah,
         persentase: (bagianAyah / harta) * 100,
         warna: '#8b5cf6',
-        fraksi: adaAnak ? '1/6' : 'Ashabah'
+        fraksi: adaAnak ? '1/6' : 'Ashabah',
+        id: 'ayah'
       });
       sisaHarta -= bagianAyah;
     }
@@ -85,7 +90,8 @@ const WarisCalculator = () => {
         bagian: bagianIbu,
         persentase: (bagianIbu / harta) * 100,
         warna: '#f59e0b',
-        fraksi: (adaAnak || adaSaudara) ? '1/6' : '1/3'
+        fraksi: (adaAnak || adaSaudara) ? '1/6' : '1/3',
+        id: 'ibu'
       });
       sisaHarta -= bagianIbu;
     }
@@ -107,7 +113,8 @@ const WarisCalculator = () => {
             bagian: bagianPerAnakLaki,
             persentase: (bagianPerAnakLaki / harta) * 100,
             warna: warnaBiru[i % warnaBiru.length],
-            fraksi: '2/n'
+            fraksi: '2/n',
+            id: `anak-laki-${i}`
           });
         }
       }
@@ -123,7 +130,8 @@ const WarisCalculator = () => {
             bagian: bagianPerAnakPerempuan,
             persentase: (bagianPerAnakPerempuan / harta) * 100,
             warna: warnaPink[i % warnaPink.length],
-            fraksi: '1/n'
+            fraksi: '1/n',
+            id: `anak-perempuan-${i}`
           });
         }
       }
@@ -137,7 +145,8 @@ const WarisCalculator = () => {
         bagian: bagianKakek,
         persentase: (bagianKakek / harta) * 100,
         warna: '#6366f1',
-        fraksi: '1/6'
+        fraksi: '1/6',
+        id: 'kakek'
       });
     }
 
@@ -148,36 +157,43 @@ const WarisCalculator = () => {
         bagian: bagianNenek,
         persentase: (bagianNenek / harta) * 100,
         warna: '#f97316',
-        fraksi: '1/6'
+        fraksi: '1/6',
+        id: 'nenek'
       });
     }
 
     return hasil;
   }, [harta, ahliWaris]);
 
-  const canvasRef = useRef(null);
+  const svgRef = useRef(null);
 
-  // Draw Network Graph
+  // Draw Network Graph with D3.js
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!svgRef.current) return;
 
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, width, height);
-
+    const width = 700;
+    const height = 800;
     const centerX = width / 2;
     const centerY = 200;
-    const radius = 60;
+
+    // Clear previous SVG content
+    d3.select(svgRef.current).selectAll("*").remove();
+
+    const svg = d3.select(svgRef.current)
+      .attr("width", width)
+      .attr("height", height);
 
     // Filter ahli waris yang mendapat bagian
-    const ahliWarisAktif = hitungWaris.filter(h => h.bagian > 0 && h.nama !== 'Mayit (Pewaris)');
+    const ahliWarisAktif = hitungWaris.filter(h => h.bagian > 0 && h.id !== 'pewaris');
     const jumlahAhli = ahliWarisAktif.length;
 
-    // Draw lines first (behind circles) - PANJANG GARIS BERDASARKAN PERSENTASE
+    // Create data structure for D3
+    const nodes = [
+      { id: 'pewaris', x: centerX, y: centerY, radius: 60, ...hitungWaris[0] }
+    ];
+
+    const links = [];
+
     ahliWarisAktif.forEach((ahli, idx) => {
       const angle = (Math.PI / (jumlahAhli + 1)) * (idx + 1);
       
@@ -188,75 +204,133 @@ const WarisCalculator = () => {
       
       const x = centerX + Math.cos(angle - Math.PI / 2) * lineLength;
       const y = centerY + Math.sin(angle - Math.PI / 2) * lineLength;
-
-      // Garis dengan ketebalan berdasarkan persentase
-      ctx.strokeStyle = ahli.warna;
-      ctx.lineWidth = 2 + (ahli.persentase / 100) * 4;
-
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    });
-
-    // Draw center circle (Mayit/Pewaris)
-    ctx.fillStyle = '#3b82f6';
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#1e40af';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    // Draw center text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('Pewaris', centerX, centerY - 10);
-    ctx.font = '12px sans-serif';
-    ctx.fillText('(Almarhum)', centerX, centerY + 10);
-    ctx.font = 'bold 11px sans-serif';
-    ctx.fillText(formatRupiah(harta), centerX, centerY + 28);
-
-    // Draw ahli waris circles
-    ahliWarisAktif.forEach((ahli, idx) => {
-      const angle = (Math.PI / (jumlahAhli + 1)) * (idx + 1);
-      
-      // Panjang garis berdasarkan persentase (sesuai dengan garis)
-      const minDistance = 150;
-      const maxDistance = 400;
-      const lineLength = minDistance + (ahli.persentase / 100) * (maxDistance - minDistance);
-      
-      const x = centerX + Math.cos(angle - Math.PI / 2) * lineLength;
-      const y = centerY + Math.sin(angle - Math.PI / 2) * lineLength;
-      
-      // Circle size based on bagian
       const nodeRadius = 45 + (ahli.persentase / 100) * 35;
 
-      // Draw circle
-      ctx.fillStyle = ahli.warna;
-      ctx.beginPath();
-      ctx.arc(x, y, nodeRadius, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 3;
-      ctx.stroke();
+      nodes.push({
+        ...ahli,
+        x,
+        y,
+        radius: nodeRadius
+      });
 
-      // Draw text - TAMPILKAN NAMA, FRAKSI, DAN NILAI
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 13px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      
-      // Nama (bisa multi-line)
-      const namaWords = ahli.nama.split(' ');
-      const lineHeight = 15;
-      let currentY = y - 25;
-      
-      // Kelompokkan kata jadi max 2 kata per baris
+      links.push({
+        source: 'pewaris',
+        target: ahli.id,
+        width: 2 + (ahli.persentase / 100) * 4,
+        color: ahli.warna
+      });
+    });
+
+    // Draw links (lines)
+    const link = svg.append("g")
+      .selectAll("line")
+      .data(links)
+      .enter()
+      .append("line")
+      .attr("x1", centerX)
+      .attr("y1", centerY)
+      .attr("x2", d => {
+        const targetNode = nodes.find(n => n.id === d.target);
+        return targetNode ? targetNode.x : centerX;
+      })
+      .attr("y2", d => {
+        const targetNode = nodes.find(n => n.id === d.target);
+        return targetNode ? targetNode.y : centerY;
+      })
+      .attr("stroke", d => d.color)
+      .attr("stroke-width", 0)
+      .attr("opacity", 0.7);
+
+    // Animate links
+    link.transition()
+      .duration(800)
+      .attr("stroke-width", d => d.width);
+
+    // Draw nodes (circles)
+    const node = svg.append("g")
+      .selectAll("g")
+      .data(nodes)
+      .enter()
+      .append("g")
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+
+    // Add circles
+    node.append("circle")
+      .attr("r", 0)
+      .attr("fill", d => d.id === 'pewaris' ? '#3b82f6' : d.warna)
+      .attr("stroke", d => d.id === 'pewaris' ? '#1e40af' : '#ffffff')
+      .attr("stroke-width", 3)
+      .style("cursor", "pointer")
+      .on("mouseenter", function() {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr("stroke-width", 5);
+      })
+      .on("mouseleave", function() {
+        d3.select(this)
+          .transition()
+          .duration(200)
+          .attr("stroke-width", 3);
+      })
+      .transition()
+      .duration(800)
+      .attr("r", d => d.radius);
+
+    // Add text for center node (Pewaris)
+    const pewarisNode = node.filter(d => d.id === 'pewaris');
+    
+    pewarisNode.append("text")
+      .attr("text-anchor", "middle")
+      .attr("dy", -10)
+      .attr("fill", "#ffffff")
+      .attr("font-weight", "bold")
+      .attr("font-size", "14px")
+      .style("pointer-events", "none")
+      .text("Pewaris")
+      .style("opacity", 0)
+      .transition()
+      .delay(400)
+      .duration(600)
+      .style("opacity", 1);
+
+    pewarisNode.append("text")
+      .attr("text-anchor", "middle")
+      .attr("dy", 10)
+      .attr("fill", "#ffffff")
+      .attr("font-size", "12px")
+      .style("pointer-events", "none")
+      .text("(Almarhum)")
+      .style("opacity", 0)
+      .transition()
+      .delay(400)
+      .duration(600)
+      .style("opacity", 1);
+
+    pewarisNode.append("text")
+      .attr("text-anchor", "middle")
+      .attr("dy", 28)
+      .attr("fill", "#ffffff")
+      .attr("font-weight", "bold")
+      .attr("font-size", "11px")
+      .style("pointer-events", "none")
+      .text(formatRupiah(harta))
+      .style("opacity", 0)
+      .transition()
+      .delay(400)
+      .duration(600)
+      .style("opacity", 1);
+
+    // Add text for ahli waris nodes
+    const ahliWarisNodes = node.filter(d => d.id !== 'pewaris');
+
+    // Nama (multi-line)
+    ahliWarisNodes.each(function(d) {
+      const nodeGroup = d3.select(this);
+      const namaWords = d.nama.split(' ');
+      let lines = [];
       let tempLine = '';
-      const lines = [];
+      
       namaWords.forEach(word => {
         const testLine = tempLine + (tempLine ? ' ' : '') + word;
         if (testLine.length > 12 && tempLine) {
@@ -267,20 +341,55 @@ const WarisCalculator = () => {
         }
       });
       if (tempLine) lines.push(tempLine);
-      
-      lines.forEach((line) => {
-        ctx.fillText(line, x, currentY);
-        currentY += lineHeight;
+
+      const lineHeight = 15;
+      const startY = -25;
+
+      lines.forEach((line, i) => {
+        nodeGroup.append("text")
+          .attr("text-anchor", "middle")
+          .attr("dy", startY + i * lineHeight)
+          .attr("fill", "#ffffff")
+          .attr("font-weight", "bold")
+          .attr("font-size", "13px")
+          .style("pointer-events", "none")
+          .text(line)
+          .style("opacity", 0)
+          .transition()
+          .delay(600)
+          .duration(600)
+          .style("opacity", 1);
       });
 
-      // Fraksi (1/8, 1/4, dll)
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillText(ahli.fraksi, x, y + 5);
-      
+      // Fraksi
+      nodeGroup.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", 5)
+        .attr("fill", "#ffffff")
+        .attr("font-weight", "bold")
+        .attr("font-size", "16px")
+        .style("pointer-events", "none")
+        .text(d.fraksi)
+        .style("opacity", 0)
+        .transition()
+        .delay(700)
+        .duration(600)
+        .style("opacity", 1);
+
       // Nilai rupiah
-      ctx.font = 'bold 10px sans-serif';
-      const rupiahText = formatRupiah(ahli.bagian);
-      ctx.fillText(rupiahText, x, y + 22);
+      nodeGroup.append("text")
+        .attr("text-anchor", "middle")
+        .attr("dy", 22)
+        .attr("fill", "#ffffff")
+        .attr("font-weight", "bold")
+        .attr("font-size", "10px")
+        .style("pointer-events", "none")
+        .text(formatRupiah(d.bagian))
+        .style("opacity", 0)
+        .transition()
+        .delay(800)
+        .duration(600)
+        .style("opacity", 1);
     });
 
   }, [hitungWaris, harta, formatRupiah]);
@@ -292,8 +401,8 @@ const WarisCalculator = () => {
           
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-8 text-white">
-            <h1 className="text-3xl font-bold mb-2">Kalkulator Graf Waris Syariat Islam</h1>
-            <p className="text-emerald-100">Hitung pembagian waris secara real-time sesuai hukum Islam dengan output Graf</p>
+            <h1 className="text-3xl font-bold mb-2">Kalkulator Waris Syariat Islam</h1>
+            <p className="text-emerald-100">Hitung pembagian waris secara real-time sesuai hukum Islam</p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-0">
@@ -312,13 +421,12 @@ const WarisCalculator = () => {
                 <div className="text-3xl font-bold text-emerald-600">{formatRupiah(harta)}</div>
               </div>
 
-              {/* Network Graph */}
+              {/* Network Graph with D3.js */}
               <div className="bg-white rounded-xl p-6 shadow-sm mb-6 overflow-auto" style={{ maxHeight: '600px' }}>
-                <canvas 
-                  ref={canvasRef} 
-                  width={700} 
-                  height={800}
+                <svg 
+                  ref={svgRef}
                   className="mx-auto"
+                  style={{ display: 'block' }}
                 />
               </div>
 
@@ -326,7 +434,7 @@ const WarisCalculator = () => {
               <div className="mt-6 space-y-3">
                 <h3 className="font-bold text-gray-800 text-lg mb-4">Detail Pembagian</h3>
                 {hitungWaris.filter(h => h.bagian > 0).map((ahli, idx) => (
-                  <div key={idx} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+                  <div key={idx} className="bg-white rounded-lg p-4 shadow-sm border border-gray-100 transition-all hover:shadow-md hover:scale-105">
                     <div className="flex justify-between items-center">
                       <div className="flex items-center gap-3">
                         <div 
@@ -482,7 +590,7 @@ const WarisCalculator = () => {
 
         {/* Footer */}
         <div className="text-center mt-8 text-gray-600 text-sm">
-          <p>Prototype Kalkulator Waris Syariat Islam v2.0</p>
+          <p>Prototype Kalkulator Waris Syariat Islam v1.0 - Powered by D3.js</p>
         </div>
       </div>
     </div>

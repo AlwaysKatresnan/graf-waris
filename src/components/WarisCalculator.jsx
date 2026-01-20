@@ -173,8 +173,8 @@ const WarisCalculator = () => {
 
     const width = 700;
     const height = 800;
-    const centerX = width / 2;
-    const centerY = 200;
+    const centerX = 200; // Geser dari kiri
+    const centerY = 400; // Center vertikal di tengah canvas
 
     // Clear previous SVG content
     d3.select(svgRef.current).selectAll("*").remove();
@@ -195,15 +195,16 @@ const WarisCalculator = () => {
     const links = [];
 
     ahliWarisAktif.forEach((ahli, idx) => {
-      const angle = (Math.PI / (jumlahAhli + 1)) * (idx + 1);
+      // Distribusi setengah lingkaran ke kanan (dari atas sampai bawah)
+      const angle = (Math.PI / (jumlahAhli + 1)) * (idx + 1) - Math.PI / 2;
       
-      // Panjang garis berdasarkan persentase (min 150px, max 400px)
-      const minDistance = 150;
-      const maxDistance = 400;
+      // Panjang garis berdasarkan persentase (min 180px, max 350px)
+      const minDistance = 180;
+      const maxDistance = 350;
       const lineLength = minDistance + (ahli.persentase / 100) * (maxDistance - minDistance);
       
-      const x = centerX + Math.cos(angle - Math.PI / 2) * lineLength;
-      const y = centerY + Math.sin(angle - Math.PI / 2) * lineLength;
+      const x = centerX + Math.cos(angle) * lineLength;
+      const y = centerY + Math.sin(angle) * lineLength;
       const nodeRadius = 45 + (ahli.persentase / 100) * 35;
 
       nodes.push({
@@ -422,7 +423,7 @@ const WarisCalculator = () => {
               </div>
 
               {/* Network Graph with D3.js */}
-              <div className="bg-white rounded-xl p-6 shadow-sm mb-6 overflow-auto" style={{ maxHeight: '600px' }}>
+              <div className="bg-white rounded-xl p-6 shadow-sm mb-6 overflow-auto">
                 <svg 
                   ref={svgRef}
                   className="mx-auto"

@@ -402,8 +402,8 @@ const WarisCalculator = () => {
           
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-8 text-white">
-            <h1 className="text-3xl font-bold mb-2">Kalkulator Waris Syariat Islam</h1>
-            <p className="text-emerald-100">Hitung pembagian waris secara real-time sesuai hukum Islam</p>
+            <h1 className="text-3xl font-bold mb-2">Kalkulator Graf Waris Syariat Islam</h1>
+            <p className="text-emerald-100">Hitung pembagian waris secara real-time sesuai hukum Islam dengan output graf</p>
           </div>
 
           <div className="grid lg:grid-cols-2 gap-0">

@@ -194,15 +194,26 @@ const HalamanPembelajaran = () => {
       return;
     }
 
-    const cx = width/2, cy = height/2;
+    const cx = width/8, cy = height/2;
     const nodes = [{ id: 'pewaris', x: cx, y: cy, r: 45, ...status[0] }];
     const links = [];
 
     anggota.forEach((a, i) => {
-      const angle = (2 * Math.PI / anggota.length) * i - Math.PI/2;
-      const dist = 200;
-      nodes.push({ ...a, x: cx + Math.cos(angle)*dist, y: cy + Math.sin(angle)*dist, r: 35 });
-      links.push({ source: 'pewaris', target: a.id, color: a.warna });
+    const gap = 110;
+    const startY = cy - ((anggota.length - 1) * gap) / 2;
+
+    nodes.push({
+        ...a,
+        x: cx + 220,
+        y: startY + i * gap,
+        r: 36
+    });
+
+    links.push({
+        source: 'pewaris',
+        target: a.id,
+        color: a.warna
+    });
     });
 
     svg.append("g").selectAll("line").data(links).enter().append("line")

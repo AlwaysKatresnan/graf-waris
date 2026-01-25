@@ -1,7 +1,305 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
+import { BookOpen, Calculator } from 'lucide-react';
 
-const WarisCalculator = () => {
+const WarisAppLengkap = () => {
+  const [halamanAktif, setHalamanAktif] = useState('pembelajaran');
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+          
+          {/* Header dengan Tab */}
+          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6">
+            <h1 className="text-3xl font-bold text-white mb-4">Visualisasi Waris dengan output Visualisasi Graf</h1>
+            <p className="text-emerald-100 mb-6">Pembelajaran & Kalkulator Pembagian Waris Syariat Islam berbasis Graf</p>
+            
+            {/* Tab Navigation */}
+            <div className="flex gap-4">
+              <button
+                onClick={() => setHalamanAktif('pembelajaran')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+                  halamanAktif === 'pembelajaran'
+                    ? 'bg-white text-emerald-600 shadow-lg'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-400'
+                }`}
+              >
+                <BookOpen size={20} />
+                Pembelajaran
+              </button>
+              <button
+                onClick={() => setHalamanAktif('kalkulator')}
+                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-semibold transition-all ${
+                  halamanAktif === 'kalkulator'
+                    ? 'bg-white text-emerald-600 shadow-lg'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-400'
+                }`}
+              >
+                <Calculator size={20} />
+                Kalkulator Waris
+              </button>
+            </div>
+          </div>
+
+          {/* Konten Halaman */}
+          {halamanAktif === 'pembelajaran' ? <HalamanPembelajaran /> : <HalamanKalkulator />}
+        </div>
+
+        {/* Footer */}
+        <div className="text-center mt-8 text-gray-600 text-sm">
+          <p>Prototype Aplikasi Waris Islam v1.0 - Dibuat untuk Skripsi Muji Arofah</p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Helper Components
+const InputSection = ({ title, children }) => (
+  <div className="bg-white rounded-xl p-4 shadow-sm mb-4">
+    <h3 className="font-bold text-gray-800 mb-3">{title}</h3>
+    <div className="space-y-2">{children}</div>
+  </div>
+);
+
+const Checkbox = ({ label, checked, onChange }) => (
+  <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+    <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="w-4 h-4 text-indigo-600 rounded" />
+    <span className="text-sm font-medium">{label}</span>
+  </label>
+);
+
+const NumberInput = ({ label, value, onChange }) => (
+  <div>
+    <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+    <input type="number" min="0" value={value} onChange={(e) => onChange(Number(e.target.value))}
+      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg focus:border-indigo-500 focus:outline-none" />
+  </div>
+);
+
+// ============= HALAMAN PEMBELAJARAN =============
+const HalamanPembelajaran = () => {
+  const [keluarga, setKeluarga] = useState({
+    istri: false, suami: false, ayah: false, ibu: false,
+    kakekDariAyah: false, nenekDariAyah: false, kakekDariIbu: false, nenekDariIbu: false,
+    anakLaki: 0, anakPerempuan: 0,
+    cucuLakiDariAnakLaki: 0, cucuPerempuanDariAnakLaki: 0,
+    cucuLakiDariAnakPerempuan: 0, cucuPerempuanDariAnakPerempuan: 0,
+    saudaraLakiKandung: 0, saudaraPerempuanKandung: 0,
+    saudaraLakiSeayah: 0, saudaraPerempuanSeayah: 0,
+    saudaraLakiSeibu: 0, saudaraPerempuanSeibu: 0,
+  });
+
+  const svgRef = useRef(null);
+
+  const tentukanStatus = useCallback(() => {
+    const status = [];
+    const penjelasan = [];
+
+    status.push({ id: 'pewaris', nama: 'Pewaris', dapat: false, warna: '#3b82f6' });
+
+    if (keluarga.istri) status.push({ id: 'istri', nama: 'Istri', dapat: true, warna: '#10b981' });
+    if (keluarga.suami) status.push({ id: 'suami', nama: 'Suami', dapat: true, warna: '#10b981' });
+    if (keluarga.ayah) status.push({ id: 'ayah', nama: 'Ayah', dapat: true, warna: '#10b981' });
+    if (keluarga.ibu) status.push({ id: 'ibu', nama: 'Ibu', dapat: true, warna: '#10b981' });
+
+    if (keluarga.kakekDariAyah) {
+      const dapat = !keluarga.ayah;
+      status.push({ id: 'kakek-ayah', nama: 'Kakek (Ayah)', dapat, warna: dapat ? '#10b981' : '#9ca3af' });
+      if (!dapat) penjelasan.push('❌ Kakek (dari Ayah) terhijab karena Ayah masih hidup');
+    }
+
+    if (keluarga.nenekDariAyah) {
+      const dapat = !keluarga.ayah && !keluarga.ibu;
+      status.push({ id: 'nenek-ayah', nama: 'Nenek (Ayah)', dapat, warna: dapat ? '#10b981' : '#9ca3af' });
+      if (!dapat) penjelasan.push('❌ Nenek (dari Ayah) terhijab karena Ayah/Ibu masih hidup');
+    }
+
+    if (keluarga.nenekDariIbu) {
+      const dapat = !keluarga.ibu;
+      status.push({ id: 'nenek-ibu', nama: 'Nenek (Ibu)', dapat, warna: dapat ? '#10b981' : '#9ca3af' });
+      if (!dapat) penjelasan.push('❌ Nenek (dari Ibu) terhijab karena Ibu masih hidup');
+    }
+
+    for (let i = 0; i < keluarga.anakLaki; i++) {
+      status.push({ id: `anak-l-${i}`, nama: `Anak Laki ${i + 1}`, dapat: true, warna: '#10b981' });
+    }
+    for (let i = 0; i < keluarga.anakPerempuan; i++) {
+      status.push({ id: `anak-p-${i}`, nama: `Anak Perempuan ${i + 1}`, dapat: true, warna: '#10b981' });
+    }
+
+    const adaAnakLaki = keluarga.anakLaki > 0;
+    const ada2AnakPerempuan = keluarga.anakPerempuan >= 2;
+    
+    for (let i = 0; i < keluarga.cucuLakiDariAnakLaki; i++) {
+      const dapat = !adaAnakLaki && !ada2AnakPerempuan;
+      status.push({ id: `cucu-l-al-${i}`, nama: `Cucu L (Anak L) ${i + 1}`, dapat, warna: dapat ? '#10b981' : '#9ca3af' });
+      if (!dapat && i === 0) {
+        penjelasan.push(adaAnakLaki ? '❌ Cucu dari anak laki terhijab karena ada Anak Laki' : '❌ Cucu dari anak laki terhijab karena ada 2+ Anak Perempuan');
+      }
+    }
+
+    for (let i = 0; i < keluarga.cucuPerempuanDariAnakLaki; i++) {
+      const dapat = !adaAnakLaki && !ada2AnakPerempuan;
+      status.push({ id: `cucu-p-al-${i}`, nama: `Cucu P (Anak L) ${i + 1}`, dapat, warna: dapat ? '#10b981' : '#9ca3af' });
+    }
+
+    for (let i = 0; i < keluarga.cucuLakiDariAnakPerempuan; i++) {
+      status.push({ id: `cucu-l-ap-${i}`, nama: `Cucu L (Anak P) ${i + 1}`, dapat: false, warna: '#9ca3af' });
+      if (i === 0) penjelasan.push('❌ Cucu dari anak perempuan TIDAK dapat warisan');
+    }
+
+    for (let i = 0; i < keluarga.cucuPerempuanDariAnakPerempuan; i++) {
+      status.push({ id: `cucu-p-ap-${i}`, nama: `Cucu P (Anak P) ${i + 1}`, dapat: false, warna: '#9ca3af' });
+    }
+
+    const cucuLakiAnakLaki = keluarga.cucuLakiDariAnakLaki > 0;
+    const saudaraHijab = keluarga.ayah || adaAnakLaki || cucuLakiAnakLaki;
+
+    for (let i = 0; i < keluarga.saudaraLakiKandung; i++) {
+      status.push({ id: `sdr-l-k-${i}`, nama: `Sdr L Kandung ${i + 1}`, dapat: !saudaraHijab, warna: !saudaraHijab ? '#10b981' : '#9ca3af' });
+      if (saudaraHijab && i === 0) penjelasan.push('❌ Saudara kandung terhijab karena ada Ayah/Anak Laki/Cucu Laki');
+    }
+
+    for (let i = 0; i < keluarga.saudaraPerempuanKandung; i++) {
+      status.push({ id: `sdr-p-k-${i}`, nama: `Sdr P Kandung ${i + 1}`, dapat: !saudaraHijab, warna: !saudaraHijab ? '#10b981' : '#9ca3af' });
+    }
+
+    const seibuHijab = keluarga.ayah || keluarga.ibu || adaAnakLaki || keluarga.anakPerempuan > 0 || cucuLakiAnakLaki;
+    
+    for (let i = 0; i < keluarga.saudaraLakiSeibu; i++) {
+      status.push({ id: `sdr-l-si-${i}`, nama: `Sdr L Seibu ${i + 1}`, dapat: !seibuHijab, warna: !seibuHijab ? '#10b981' : '#9ca3af' });
+      if (seibuHijab && i === 0) penjelasan.push('❌ Saudara seibu terhijab karena ada Ayah/Ibu/Anak');
+    }
+
+    for (let i = 0; i < keluarga.saudaraPerempuanSeibu; i++) {
+      status.push({ id: `sdr-p-si-${i}`, nama: `Sdr P Seibu ${i + 1}`, dapat: !seibuHijab, warna: !seibuHijab ? '#10b981' : '#9ca3af' });
+    }
+
+    return { status, penjelasan };
+  }, [keluarga]);
+
+  useEffect(() => {
+    if (!svgRef.current) return;
+    const { status } = tentukanStatus();
+    const width = 800, height = 600;
+    d3.select(svgRef.current).selectAll("*").remove();
+    const svg = d3.select(svgRef.current).attr("width", width).attr("height", height);
+    const anggota = status.filter(s => s.id !== 'pewaris');
+    
+    if (anggota.length === 0) {
+      svg.append("text").attr("x", width/2).attr("y", height/2).attr("text-anchor", "middle")
+        .attr("fill", "#9ca3af").attr("font-size", "16px").text("Pilih anggota keluarga untuk memulai");
+      return;
+    }
+
+    const cx = width/2, cy = height/2;
+    const nodes = [{ id: 'pewaris', x: cx, y: cy, r: 45, ...status[0] }];
+    const links = [];
+
+    anggota.forEach((a, i) => {
+      const angle = (2 * Math.PI / anggota.length) * i - Math.PI/2;
+      const dist = 200;
+      nodes.push({ ...a, x: cx + Math.cos(angle)*dist, y: cy + Math.sin(angle)*dist, r: 35 });
+      links.push({ source: 'pewaris', target: a.id, color: a.warna });
+    });
+
+    svg.append("g").selectAll("line").data(links).enter().append("line")
+      .attr("x1", cx).attr("y1", cy)
+      .attr("x2", d => nodes.find(n => n.id === d.target)?.x || cx)
+      .attr("y2", d => nodes.find(n => n.id === d.target)?.y || cy)
+      .attr("stroke", d => d.color).attr("stroke-width", 2).attr("opacity", 0.6);
+
+    const node = svg.append("g").selectAll("g").data(nodes).enter().append("g")
+      .attr("transform", d => `translate(${d.x},${d.y})`);
+
+    node.append("circle").attr("r", d => d.r).attr("fill", d => d.warna)
+      .attr("stroke", "#fff").attr("stroke-width", 2);
+
+    node.append("text").attr("text-anchor", "middle").attr("dy", 4)
+      .attr("fill", "#fff").attr("font-weight", "bold").attr("font-size", "10px")
+      .text(d => d.nama);
+
+  }, [keluarga, tentukanStatus]);
+
+  const { penjelasan } = tentukanStatus();
+
+  return (
+    <div className="grid lg:grid-cols-2">
+      <div className="bg-purple-50 p-6 border-r border-gray-200">
+        <h2 className="text-xl font-bold mb-4">Visualisasi Silsilah Keluarga</h2>
+        <div className="bg-white rounded p-3 mb-4 flex gap-4 text-sm">
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-green-500"></div>Dapat Warisan</div>
+          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-gray-400"></div>Terhijab</div>
+        </div>
+        <div className="bg-white rounded p-4 mb-4">
+          <svg ref={svgRef} style={{display:'block', margin:'0 auto'}} />
+        </div>
+        {penjelasan.length > 0 ? (
+          <div className="bg-white rounded p-4">
+            <h3 className="font-bold mb-2">Aturan Hijab:</h3>
+            {penjelasan.map((p, i) => (
+              <div key={i} className="bg-red-50 border-l-4 border-red-400 p-2 mb-2 text-sm text-red-800">{p}</div>
+            ))}
+          </div>
+        ) : (
+          <div className="bg-green-50 border-l-4 border-green-400 p-3 text-sm text-green-800">
+            ✅ Semua yang dipilih mendapat warisan
+          </div>
+        )}
+      </div>
+
+      <div className="bg-indigo-50 p-6 overflow-y-auto" style={{maxHeight:'700px'}}>
+        <h2 className="text-xl font-bold mb-4">Input Silsilah Keluarga</h2>
+        
+        <InputSection title="Pasangan">
+          <Checkbox label="Istri" checked={keluarga.istri} onChange={e => setKeluarga({...keluarga, istri: e, suami: false})} />
+          <Checkbox label="Suami" checked={keluarga.suami} onChange={e => setKeluarga({...keluarga, suami: e, istri: false})} />
+        </InputSection>
+
+        <InputSection title="Orang Tua">
+          <Checkbox label="Ayah" checked={keluarga.ayah} onChange={e => setKeluarga({...keluarga, ayah: e})} />
+          <Checkbox label="Ibu" checked={keluarga.ibu} onChange={e => setKeluarga({...keluarga, ibu: e})} />
+        </InputSection>
+
+        <InputSection title="Kakek & Nenek">
+          <Checkbox label="Kakek (dari Ayah)" checked={keluarga.kakekDariAyah} onChange={e => setKeluarga({...keluarga, kakekDariAyah: e})} />
+          <Checkbox label="Nenek (dari Ayah)" checked={keluarga.nenekDariAyah} onChange={e => setKeluarga({...keluarga, nenekDariAyah: e})} />
+          <Checkbox label="Nenek (dari Ibu)" checked={keluarga.nenekDariIbu} onChange={e => setKeluarga({...keluarga, nenekDariIbu: e})} />
+        </InputSection>
+
+        <InputSection title="Anak">
+          <NumberInput label="Anak Laki-laki" value={keluarga.anakLaki} onChange={v => setKeluarga({...keluarga, anakLaki: v})} />
+          <NumberInput label="Anak Perempuan" value={keluarga.anakPerempuan} onChange={v => setKeluarga({...keluarga, anakPerempuan: v})} />
+        </InputSection>
+
+        <InputSection title="Cucu dari Anak Laki">
+          <NumberInput label="Cucu Laki" value={keluarga.cucuLakiDariAnakLaki} onChange={v => setKeluarga({...keluarga, cucuLakiDariAnakLaki: v})} />
+          <NumberInput label="Cucu Perempuan" value={keluarga.cucuPerempuanDariAnakLaki} onChange={v => setKeluarga({...keluarga, cucuPerempuanDariAnakLaki: v})} />
+        </InputSection>
+
+        <InputSection title="Cucu dari Anak Perempuan">
+          <NumberInput label="Cucu Laki" value={keluarga.cucuLakiDariAnakPerempuan} onChange={v => setKeluarga({...keluarga, cucuLakiDariAnakPerempuan: v})} />
+          <NumberInput label="Cucu Perempuan" value={keluarga.cucuPerempuanDariAnakPerempuan} onChange={v => setKeluarga({...keluarga, cucuPerempuanDariAnakPerempuan: v})} />
+        </InputSection>
+
+        <InputSection title="Saudara Kandung">
+          <NumberInput label="Saudara Laki Kandung" value={keluarga.saudaraLakiKandung} onChange={v => setKeluarga({...keluarga, saudaraLakiKandung: v})} />
+          <NumberInput label="Saudara Perempuan Kandung" value={keluarga.saudaraPerempuanKandung} onChange={v => setKeluarga({...keluarga, saudaraPerempuanKandung: v})} />
+        </InputSection>
+
+        <InputSection title="Saudara Seibu">
+          <NumberInput label="Saudara Laki Seibu" value={keluarga.saudaraLakiSeibu} onChange={v => setKeluarga({...keluarga, saudaraLakiSeibu: v})} />
+          <NumberInput label="Saudara Perempuan Seibu" value={keluarga.saudaraPerempuanSeibu} onChange={v => setKeluarga({...keluarga, saudaraPerempuanSeibu: v})} />
+        </InputSection>
+      </div>
+    </div>
+  );
+};
+
+// ============= HALAMAN KALKULATOR =============
+const HalamanKalkulator = () => {
   const [harta, setHarta] = useState(100000000);
   const [ahliWaris, setAhliWaris] = useState({
     istri: false,
@@ -398,14 +696,7 @@ const WarisCalculator = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
       <div className="max-w-7xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
-          
-          {/* Header */}
-          <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-8 text-white">
-            <h1 className="text-3xl font-bold mb-2">Visualisasi Pembagian Waris Islam dengan Teori Graf</h1>
-            <p className="text-emerald-100">Dibuat dalam rangka penyusunan skripsi Muji Arofah</p>
-          </div>
-
+        <div className="bg-white rounded-2xl overflow-hidden">
           <div className="grid lg:grid-cols-2 gap-0">
             
             {/* AREA HASIL GRAF (ATAS) */}
@@ -455,7 +746,7 @@ const WarisCalculator = () => {
             </div>
 
             {/* AREA PENGISIAN DATA (BAWAH) */}
-            <div className="bg-blue-50 p-8">
+            <div className="bg-white-50 p-8">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">Input Data Ahli Waris</h2>
                 <div className="bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">
@@ -585,17 +876,11 @@ const WarisCalculator = () => {
                 </div>
               </div>
             </div>
-
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8 text-gray-600 text-sm">
-          <p>Prototype Kalkulator Waris Syariat Islam v1.0 - Powered by D3.js</p>
         </div>
       </div>
     </div>
   );
 };
 
-export default WarisCalculator;
+export default WarisAppLengkap;

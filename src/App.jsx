@@ -1,7 +1,7 @@
-import WarisCalculator from './components/WarisCalculator'
+import WarisLengkap from './components/WarisLengkap'
 
 function App() {
-  return <WarisCalculator />
+  return <WarisLengkap/>
 }
 
 export default App

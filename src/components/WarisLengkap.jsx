@@ -12,8 +12,8 @@ const WarisAppLengkap = () => {
           
           {/* Header dengan Tab */}
           <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-6">
-            <h1 className="text-3xl font-bold text-white mb-4">Visualisasi Waris dengan output Visualisasi Graf</h1>
-            <p className="text-emerald-100 mb-6">Pembelajaran & Kalkulator Pembagian Waris Syariat Islam berbasis Graf</p>
+            <h1 className="text-3xl font-bold text-white mb-4">Visualisasi Pembagian Waris Islam dengan Output Graf</h1>
+            <p className="text-emerald-100 mb-6">Dibuat dalam rangka penyusunan skripsi Muji Arofah</p>
             
             {/* Tab Navigation */}
             <div className="flex gap-4">
@@ -183,10 +183,16 @@ const HalamanPembelajaran = () => {
   useEffect(() => {
     if (!svgRef.current) return;
     const { status } = tentukanStatus();
-    const width = 800, height = 600;
+    const width = 800;
+    const anggota = status.filter(s => s.id !== 'pewaris');
+    
+    // Hitung tinggi dinamis berdasarkan jumlah anggota
+    const gap = 110;
+    const minHeight = 600;
+    const height = Math.max(minHeight, anggota.length * gap + 150);
+    
     d3.select(svgRef.current).selectAll("*").remove();
     const svg = d3.select(svgRef.current).attr("width", width).attr("height", height);
-    const anggota = status.filter(s => s.id !== 'pewaris');
     
     if (anggota.length === 0) {
       svg.append("text").attr("x", width/2).attr("y", height/2).attr("text-anchor", "middle")
@@ -199,38 +205,62 @@ const HalamanPembelajaran = () => {
     const links = [];
 
     anggota.forEach((a, i) => {
-    const gap = 110;
-    const startY = cy - ((anggota.length - 1) * gap) / 2;
+      const startY = cy - ((anggota.length - 1) * gap) / 2;
 
-    nodes.push({
+      nodes.push({
         ...a,
         x: cx + 220,
         y: startY + i * gap,
         r: 36
-    });
+      });
 
-    links.push({
+      links.push({
         source: 'pewaris',
         target: a.id,
         color: a.warna
-    });
+      });
     });
 
+    // Animasi garis dengan delay
     svg.append("g").selectAll("line").data(links).enter().append("line")
       .attr("x1", cx).attr("y1", cy)
+      .attr("x2", cx).attr("y2", cy)
+      .attr("stroke", d => d.color).attr("stroke-width", 2).attr("opacity", 0)
+      .transition()
+      .duration(600)
+      .delay((d, i) => i * 50)
       .attr("x2", d => nodes.find(n => n.id === d.target)?.x || cx)
       .attr("y2", d => nodes.find(n => n.id === d.target)?.y || cy)
-      .attr("stroke", d => d.color).attr("stroke-width", 2).attr("opacity", 0.6);
+      .attr("opacity", 0.6);
 
     const node = svg.append("g").selectAll("g").data(nodes).enter().append("g")
-      .attr("transform", d => `translate(${d.x},${d.y})`);
+      .attr("transform", d => `translate(${d.x},${d.y})`)
+      .attr("opacity", 0);
 
-    node.append("circle").attr("r", d => d.r).attr("fill", d => d.warna)
-      .attr("stroke", "#fff").attr("stroke-width", 2);
+    // Animasi fade in untuk node
+    node.transition()
+      .duration(400)
+      .delay((d, i) => i * 50)
+      .attr("opacity", 1);
+
+    // Circle dengan animasi scale
+    node.append("circle")
+      .attr("r", 0)
+      .attr("fill", d => d.warna)
+      .attr("stroke", "#fff").attr("stroke-width", 2)
+      .transition()
+      .duration(400)
+      .delay((d, i) => i * 50)
+      .attr("r", d => d.r);
 
     node.append("text").attr("text-anchor", "middle").attr("dy", 4)
       .attr("fill", "#fff").attr("font-weight", "bold").attr("font-size", "10px")
-      .text(d => d.nama);
+      .attr("opacity", 0)
+      .text(d => d.nama)
+      .transition()
+      .duration(300)
+      .delay((d, i) => i * 50 + 200)
+      .attr("opacity", 1);
 
   }, [keluarga, tentukanStatus]);
 

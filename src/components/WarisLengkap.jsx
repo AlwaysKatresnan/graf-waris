@@ -85,9 +85,9 @@ const WarisAppLengkap = () => {
             </div>
             
             <div className="flex flex-wrap gap-4">
-              <NavButton active={halamanAktif === 'kalkulator'} onClick={() => setHalamanAktif('kalkulator')} icon={Calculator} label="Visualisasi Graf Waris" />
               <NavButton active={halamanAktif === 'materi'} onClick={() => setHalamanAktif('materi')} icon={BookMarked} label="Materi Waris" />
               <NavButton active={halamanAktif === 'materiGraf'} onClick={() => setHalamanAktif('materiGraf')} icon={Network} label="Materi Graf" />
+              <NavButton active={halamanAktif === 'kalkulator'} onClick={() => setHalamanAktif('kalkulator')} icon={Calculator} label="Visualisasi Graf" />
             </div>
           </div>
 

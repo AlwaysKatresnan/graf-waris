@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
-import { Calculator, BookMarked, Network, GitBranch, Users, BookText, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { BookMarked, Network, GitBranch, Users, BookText, PanelRightClose, PanelRightOpen } from 'lucide-react';
 
 
 const NavButton = ({ active, onClick, icon: Icon, label }) => (
@@ -17,28 +17,6 @@ const NavButton = ({ active, onClick, icon: Icon, label }) => (
     </span>
     <span>{label}</span>
   </button>
-);
-
-const MiniFamilyGraph = () => (
-  <div className="hidden lg:block bg-white/10 border border-white/20 rounded-2xl p-4 min-w-[280px]">
-    <div className="text-white/90 text-sm font-semibold mb-3 flex items-center gap-2">
-      <GitBranch size={18} /> Contoh visualisasi silsilah
-    </div>
-    <svg viewBox="0 0 260 150" className="w-full h-[150px]">
-      <line x1="130" y1="35" x2="70" y2="90" stroke="rgba(255,255,255,.65)" strokeWidth="3" />
-      <line x1="130" y1="35" x2="130" y2="90" stroke="rgba(255,255,255,.65)" strokeWidth="3" />
-      <line x1="130" y1="35" x2="190" y2="90" stroke="rgba(255,255,255,.65)" strokeWidth="3" />
-      <line x1="190" y1="90" x2="220" y2="130" stroke="rgba(255,255,255,.65)" strokeWidth="3" />
-      {[
-        [130,35,'Pewaris'], [70,90,'Ayah'], [130,90,'Istri'], [190,90,'Anak'], [220,130,'Cucu']
-      ].map(([x,y,t]) => (
-        <g key={t}>
-          <circle cx={x} cy={y} r="18" fill="white" opacity="0.95" />
-          <text x={x} y={y+35} textAnchor="middle" fill="white" fontSize="11" fontWeight="600">{t}</text>
-        </g>
-      ))}
-    </svg>
-  </div>
 );
 
 const TopicIndex = ({ title, items, tone = 'emerald' }) => {
@@ -61,7 +39,7 @@ const TopicIndex = ({ title, items, tone = 'emerald' }) => {
 };
 
 const WarisAppLengkap = () => {
-  const [halamanAktif, setHalamanAktif] = useState('kalkulator');
+  const [halamanAktif, setHalamanAktif] = useState('visualisasi');
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-4">
@@ -72,26 +50,25 @@ const WarisAppLengkap = () => {
             <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 mb-7">
               <div>
                 <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-2 text-emerald-50 text-sm font-semibold mb-4">
-                  <Users size={17} /> Aplikasi kalkulator waris dan visualisasi keluarga
+                  <Users size={17} /> Aplikasi visualisasi graf pembagian waris
                 </div>
                 <h1 className="text-3xl md:text-4xl font-bold text-white mb-3 leading-tight">
-                  Kalkulator Waris Islam dengan Visualisasi Graf
+                  Visualisasi Graf Pembagian Waris Islam
                 </h1>
                 <p className="text-emerald-50 text-base md:text-lg max-w-3xl leading-relaxed">
                   Aplikasi perhitungan waris Islam yang menampilkan relasi pewaris dan ahli waris melalui visualisasi graf silsilah keluarga.
                 </p>
               </div>
-              <MiniFamilyGraph />
             </div>
             
             <div className="flex flex-wrap gap-4">
               <NavButton active={halamanAktif === 'materi'} onClick={() => setHalamanAktif('materi')} icon={BookMarked} label="Materi Waris" />
               <NavButton active={halamanAktif === 'materiGraf'} onClick={() => setHalamanAktif('materiGraf')} icon={Network} label="Materi Graf" />
-              <NavButton active={halamanAktif === 'kalkulator'} onClick={() => setHalamanAktif('kalkulator')} icon={Calculator} label="Visualisasi Graf" />
+              <NavButton active={halamanAktif === 'visualisasi'} onClick={() => setHalamanAktif('visualisasi')} icon={GitBranch} label="Visualisasi Graf" />
             </div>
           </div>
 
-          {halamanAktif === 'kalkulator'  && <HalamanKalkulator />}
+          {halamanAktif === 'visualisasi' && <HalamanVisualisasi />}
           {halamanAktif === 'materi'      && <HalamanMateri />}
           {halamanAktif === 'materiGraf'  && <HalamanMateriGraf />}
         </div>
@@ -126,7 +103,7 @@ const NumberInput = ({ label, value, onChange }) => (
   </div>
 );
 
-const HalamanKalkulator = () => {
+const HalamanVisualisasi = () => {
   const [harta, setHarta] = useState(100000000);
   const [ahliWaris, setAhliWaris] = useState({
     istri: false, suami: false, ayah: false, ibu: false,
@@ -373,6 +350,59 @@ const HalamanKalkulator = () => {
       }
     }
 
+    // ── Rekonsiliasi pembagian: sisa ashabah, 'aul, dan radd ──────────────────
+    const EPS = 1; // toleransi pembulatan dalam rupiah
+
+    const isAshabahFraksi = (fr) => {
+      const s = String(fr || '').toLowerCase();
+      return s.includes('ashabah') || s.includes('asobah') || s.includes('sisa') || s === '2/n' || s === '1/n';
+    };
+    const totalTeralokasi = () => hasil
+      .filter(h => h.id !== 'pewaris')
+      .reduce((s, h) => s + h.bagian, 0);
+
+    // 1) Sisa harta menjadi ashabah untuk Ayah/Kakek ketika hanya ada keturunan perempuan.
+    const hanyaKeturunanPr = adaAnak && !adaAnakLaki && !adaCucuLakiDariAL;
+    if (hanyaKeturunanPr) {
+      const sisa = harta - totalTeralokasi();
+      if (sisa > EPS) {
+        const asb = hasil.find(h => h.id === 'ayah') || hasil.find(h => h.id === 'kakek-ayah');
+        if (asb) {
+          asb.bagian += sisa;
+          asb.persentase = (asb.bagian / harta) * 100;
+          asb.fraksi = asb.fraksi ? `${asb.fraksi} + Ashabah` : 'Ashabah';
+        }
+      }
+    }
+
+    // 2) Hitung ulang total setelah penyesuaian ashabah.
+    const penerima = hasil.filter(h => h.id !== 'pewaris' && h.bagian > 0);
+    const totalBagian = penerima.reduce((s, h) => s + h.bagian, 0);
+    const adaAshabah = penerima.some(h => isAshabahFraksi(h.fraksi));
+
+    if (totalBagian > harta + EPS) {
+      // 'AUL: jumlah bagian furudh melebihi harta, seluruh bagian diskalakan proporsional.
+      const faktor = harta / totalBagian;
+      penerima.forEach(h => {
+        h.bagian *= faktor;
+        h.persentase = (h.bagian / harta) * 100;
+        if (!h.fraksi.includes("'aul")) h.fraksi = `${h.fraksi} ('aul)`;
+      });
+    } else if (totalBagian < harta - EPS && !adaAshabah) {
+      // RADD: masih ada sisa harta dan tidak ada ahli waris ashabah,
+      // sisa dikembalikan ke ahli furudh secara proporsional, kecuali suami/istri.
+      const sisa = harta - totalBagian;
+      const penerimaRadd = penerima.filter(h => h.id !== 'suami' && h.id !== 'istri');
+      const basis = penerimaRadd.reduce((s, h) => s + h.bagian, 0);
+      if (basis > 0) {
+        penerimaRadd.forEach(h => {
+          h.bagian += sisa * (h.bagian / basis);
+          h.persentase = (h.bagian / harta) * 100;
+          if (!h.fraksi.includes('radd')) h.fraksi = `${h.fraksi} + radd`;
+        });
+      }
+    }
+
     return hasil;
   }, [harta, ahliWaris]);
 
@@ -515,7 +545,7 @@ const HalamanKalkulator = () => {
 
     const isAsobah = (node) => {
       const fr = String(node.fraksi || '').toLowerCase();
-      // Pada kalkulator ini, bagian 2/n, 1/n, dan sisa dipakai untuk kelompok asobah.
+      // Pada visualisasi ini, bagian 2/n, 1/n, dan sisa dipakai untuk kelompok asobah.
       return fr.includes('ashabah') || fr.includes('asobah') || fr.includes('/n') || fr.includes('sisa');
     };
 
@@ -1109,7 +1139,7 @@ const HalamanMateri = () => {
           </div>
           <h2 className="text-4xl font-bold text-gray-900 mb-3">Materi Ilmu Waris Islam</h2>
           <p className="text-gray-600 text-base max-w-3xl mx-auto leading-relaxed">
-            Ringkasan materi fikih mawaris untuk mendukung kalkulator dan visualisasi graf waris.
+            Ringkasan materi fikih mawaris untuk mendukung visualisasi graf waris.
             Materi ini memuat pengertian, dasar hukum, rukun, syarat, ahli waris, bagian waris,
             hijab, serta alur pembagian warisan secara sederhana.
           </p>
@@ -1137,7 +1167,7 @@ const HalamanMateri = () => {
               <p className="text-sm text-emerald-700 leading-relaxed">
                 Ilmu mawaris membantu keluarga memahami hak ahli waris secara adil, mencegah sengketa,
                 dan memastikan harta peninggalan dibagikan setelah kewajiban pewaris diselesaikan.
-                Dalam aplikasi ini, materi digunakan sebagai pendamping visualisasi graf dan kalkulator.
+                Dalam aplikasi ini, materi digunakan sebagai pendamping visualisasi graf waris.
               </p>
             </div>
           </div>
@@ -1313,7 +1343,26 @@ const HalamanMateriGraf = () => {
   const catatan = [
     'Halaman ini disiapkan untuk mendukung pemahaman graf keluarga dalam aplikasi waris.',
     'Gambar utama dapat kamu buat manual, lalu diletakkan pada area placeholder yang sudah disediakan.',
-    'Materi tidak dibuat terlalu panjang karena fokus halaman adalah hubungan keluarga, bukan seluruh teori graf lanjutan.'
+    'Materi dimulai dari konsep umum teori graf, kemudian difokuskan pada penerapan silsilah keluarga.'
+  ];
+
+  const konsepDasarGraf = [
+    { icon: '🔵', title: 'Simpul (Vertex/Node)', desc: 'Titik atau objek dalam graf. Himpunan simpul dilambangkan V. Contoh: setiap orang dalam silsilah keluarga adalah sebuah simpul.' },
+    { icon: '➖', title: 'Sisi (Edge)', desc: 'Garis yang menghubungkan dua simpul dan menyatakan relasi di antaranya. Himpunan sisi dilambangkan E. Contoh: hubungan orang tua-anak.' },
+    { icon: '🔢', title: 'Derajat (Degree)', desc: 'Banyaknya sisi yang terhubung pada sebuah simpul. Semakin banyak relasi, semakin tinggi derajatnya.' },
+    { icon: '🛣️', title: 'Lintasan (Path)', desc: 'Urutan simpul yang saling terhubung oleh sisi. Menunjukkan bagaimana satu simpul dapat mencapai simpul lain.' },
+  ];
+
+  const jenisGraf = [
+    { title: 'Graf Tak Berarah', desc: 'Sisi tidak memiliki arah; relasi berlaku dua arah (A-B sama dengan B-A).' },
+    { title: 'Graf Berarah (Digraf)', desc: 'Sisi memiliki arah (A ke B). Cocok untuk relasi berjenjang seperti orang tua ke anak.' },
+    { title: 'Graf Berbobot', desc: 'Setiap sisi diberi nilai/bobot, misalnya jarak, biaya, atau kedekatan relasi.' },
+    { title: 'Pohon (Tree)', desc: 'Graf terhubung tanpa sirkuit. Silsilah keluarga adalah contoh pohon berakar (rooted tree).' },
+  ];
+
+  const representasiGraf = [
+    { title: 'Matriks Ketetanggaan', desc: 'Tabel berukuran n x n; sel bernilai 1 jika dua simpul terhubung dan 0 jika tidak.' },
+    { title: 'Senarai Ketetanggaan', desc: 'Setiap simpul menyimpan daftar tetangganya. Hemat memori untuk graf jarang (sparse).' },
   ];
 
   return (
@@ -1325,8 +1374,9 @@ const HalamanMateriGraf = () => {
           </div>
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">Materi Graf Silsilah Keluarga</h2>
           <p className="text-gray-600 text-base max-w-3xl mx-auto leading-relaxed">
-            Halaman ini memuat materi graf yang difokuskan pada pemodelan hubungan keluarga. Konsep graf digunakan untuk
-            membantu pengguna membaca posisi keluarga, hubungan nasab, dan kedekatan relasi dalam bentuk visual.
+            Halaman ini diawali dengan konsep dasar teori graf secara umum, lalu dilanjutkan dengan penerapannya untuk
+            memodelkan hubungan keluarga. Konsep graf digunakan untuk membantu pengguna membaca posisi keluarga,
+            hubungan nasab, dan kedekatan relasi dalam bentuk visual.
           </p>
         </div>
 
@@ -1334,15 +1384,76 @@ const HalamanMateriGraf = () => {
           title="Fokus materi graf"
           tone="teal"
           items={[
-            'Graf sebagai pemodelan hubungan keluarga',
-            'Simpul sebagai anggota keluarga',
-            'Sisi sebagai hubungan nasab',
+            'Pengertian graf (V, E)',
+            'Simpul (vertex) dan sisi (edge)',
+            'Jenis-jenis graf',
+            'Istilah dasar dan representasi graf',
+            'Graf sebagai pemodelan keluarga',
             'Silsilah keluarga sebagai graf',
             'Visualisasi mahram dari nasab',
-            'Penerapan pada aplikasi waris'
+            'Penerapan pada visualisasi waris'
           ]}
         />
 
+        {/* MATERI GRAF UMUM: KONSEP DASAR TEORI GRAF */}
+        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-teal-100 mb-8">
+          <div className="flex items-center gap-3 mb-5">
+            <div className="w-12 h-12 rounded-2xl bg-teal-100 text-teal-700 flex items-center justify-center text-2xl shadow-sm">
+              📐
+            </div>
+            <div>
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900">Konsep Dasar Teori Graf</h3>
+              <p className="text-sm text-gray-500">Pengantar umum sebelum diterapkan pada silsilah keluarga.</p>
+            </div>
+          </div>
+
+          <div className="bg-gradient-to-br from-teal-50 to-emerald-50 border border-teal-100 rounded-2xl p-5 mb-6">
+            <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+              <strong>Graf</strong> adalah struktur yang terdiri atas himpunan <strong>simpul</strong> (vertex) dan himpunan <strong>sisi</strong> (edge) yang menghubungkan pasangan simpul. Secara matematis ditulis <code className="px-1.5 py-0.5 rounded bg-white border border-teal-200 text-teal-700 font-semibold">G = (V, E)</code>, dengan V himpunan simpul dan E himpunan sisi. Graf dipakai untuk memodelkan relasi antarobjek, misalnya jaringan pertemanan, peta jalan, jaringan komputer, hingga silsilah keluarga.
+            </p>
+          </div>
+
+          <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><span>🔑</span> Komponen dan Istilah Dasar</h4>
+          <div className="grid sm:grid-cols-2 gap-4 mb-6">
+            {konsepDasarGraf.map((item, index) => (
+              <div key={index} className="rounded-2xl border border-teal-100 bg-gradient-to-br from-white to-teal-50 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-xl shadow-sm shrink-0">{item.icon}</div>
+                  <div>
+                    <h5 className="font-bold text-gray-900 mb-1">{item.title}</h5>
+                    <p className="text-sm text-gray-700 leading-relaxed">{item.desc}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><span>🗂️</span> Jenis-Jenis Graf</h4>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            {jenisGraf.map((item, index) => (
+              <div key={index} className="rounded-2xl border border-emerald-100 bg-emerald-50/60 p-4">
+                <h5 className="font-bold text-emerald-800 mb-1 text-sm">{item.title}</h5>
+                <p className="text-xs text-gray-700 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2"><span>🧮</span> Representasi Graf</h4>
+          <div className="grid md:grid-cols-2 gap-4">
+            {representasiGraf.map((item, index) => (
+              <div key={index} className="rounded-2xl border border-cyan-100 bg-cyan-50/60 p-4">
+                <h5 className="font-bold text-cyan-800 mb-1">{item.title}</h5>
+                <p className="text-sm text-gray-700 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6 bg-amber-50 border border-amber-200 rounded-2xl p-4 text-sm text-amber-800 leading-relaxed">
+            <strong>Kaitan dengan waris:</strong> pada aplikasi ini setiap anggota keluarga menjadi <em>simpul</em> dan setiap hubungan nasab atau perkawinan menjadi <em>sisi</em>. Silsilah keluarga membentuk sebuah <em>pohon</em> (jenis graf khusus), sehingga status tiap ahli waris dapat ditelusuri dari simpul pewaris melalui sisi-sisinya.
+          </div>
+        </div>
+
+        {/* MATERI GRAF KELUARGA (MATERI YANG SUDAH ADA) */}
         <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-teal-100 mb-8">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <div className="flex items-center gap-3">
@@ -1492,7 +1603,7 @@ const HalamanMateriGraf = () => {
             </div>
             <div>
               <h3 className="text-xl font-bold text-gray-900">Fungsi dalam Aplikasi</h3>
-              <p className="text-sm text-gray-500">Peran materi graf terhadap kalkulator waris.</p>
+              <p className="text-sm text-gray-500">Peran materi graf terhadap visualisasi waris.</p>
             </div>
           </div>
 
@@ -1518,16 +1629,17 @@ const HalamanMateriGraf = () => {
             <div>
               <h3 className="font-bold text-blue-900 mb-2 text-lg">Batasan Materi Graf</h3>
               <p className="text-sm text-blue-800 leading-relaxed max-w-5xl">
-                Materi graf pada halaman ini dibatasi sampai pemahaman silsilah keluarga dan hubungan mahram dari nasab.
-                Teori graf lanjutan seperti pewarnaan graf, lintasan Hamilton, lintasan Euler, dan optimasi tidak dimasukkan
-                karena tidak menjadi fokus utama aplikasi kalkulator waris ini.
+                Halaman ini mencakup konsep dasar teori graf (simpul, sisi, jenis, dan representasi graf), lalu difokuskan
+                pada pemodelan silsilah keluarga dan hubungan mahram dari nasab. Teori graf lanjutan seperti pewarnaan graf,
+                lintasan Hamilton, lintasan Euler, dan optimasi tidak dibahas mendalam karena bukan fokus utama aplikasi
+                visualisasi waris ini.
               </p>
             </div>
           </div>
         </div>
 
         <div className="text-center text-xs text-gray-500">
-          <p>Materi disesuaikan untuk kebutuhan visualisasi graf keluarga pada aplikasi kalkulator waris.</p>
+          <p>Materi disesuaikan untuk kebutuhan visualisasi graf keluarga pada aplikasi visualisasi graf waris.</p>
         </div>
       </div>
     </div>

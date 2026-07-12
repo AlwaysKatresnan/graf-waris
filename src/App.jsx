@@ -1,7 +1,4 @@
-import WarisLengkap from './components/WarisLengkap'
-
-function App() {
-  return <WarisLengkap/>
+import WarisApp from './WarisApp.jsx';
+export default function App() {
+  return <WarisApp />;
 }
-
-export default App

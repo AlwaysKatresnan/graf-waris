@@ -34,7 +34,7 @@ const WarisAppLengkap = () => {
               <NavButton active={halamanAktif === 'materi'} onClick={() => setHalamanAktif('materi')} icon={BookMarked} label="Materi Waris" />
               <NavButton active={halamanAktif === 'materiGraf'} onClick={() => setHalamanAktif('materiGraf')} icon={Network} label="Materi Graf" />
               <NavButton active={halamanAktif === 'visualisasi'} onClick={() => setHalamanAktif('visualisasi')} icon={GitBranch} label="Visualisasi Graf" />
-              <NavButton active={halamanAktif === 'muhammadiyah'} onClick={() => setHalamanAktif('muhammadiyah')} icon={Calculator} imgSrc="/logo-muhammadiyah.png" imgAlt="Logo Muhammadiyah" label="Kalkulator Muhammadiyah" />
+              <NavButton active={halamanAktif === 'muhammadiyah'} onClick={() => setHalamanAktif('muhammadiyah')} icon={Calculator} imgSrc="/logo-muhammadiyah.png" imgAlt="Logo Muhammadiyah" label=" " />
             </div>
           </div>
 

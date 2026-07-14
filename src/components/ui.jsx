@@ -1,22 +1,45 @@
 // components/ui.jsx
-import React from 'react';
+import React, { useState } from 'react';
 import { BookText } from 'lucide-react';
 
-export const NavButton = ({ active, onClick, icon: Icon, label }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-3 px-5 py-3 rounded-xl font-semibold transition-all border text-sm md:text-base ${
-      active
-        ? 'bg-white text-emerald-700 border-white shadow-lg scale-[1.02]'
-        : 'bg-emerald-500/80 text-white border-emerald-400 hover:bg-emerald-400 hover:shadow-md'
-    }`}
-  >
-    <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${active ? 'bg-emerald-50' : 'bg-white/15'}`}>
-      <Icon size={22} />
-    </span>
-    <span>{label}</span>
-  </button>
-);
+// NavButton mendukung ikon lucide (prop `icon`) ATAU gambar logo (prop `imgSrc`).
+// Jika `imgSrc` diisi tetapi gagal dimuat, otomatis kembali ke ikon lucide.
+export const NavButton = ({ active, onClick, icon: Icon, label, imgSrc, imgAlt }) => {
+  const [imgError, setImgError] = useState(false);
+  const pakaiLogo = imgSrc && !imgError;
+  // Saat memakai logo (mis. logo putih), kotak ikon selalu berlatar hijau di
+  // kedua kondisi agar logo tetap terlihat — termasuk ketika tombol aktif dan
+  // latar tombolnya berubah menjadi putih.
+  const bgKotak = pakaiLogo
+    ? 'bg-emerald-600'
+    : active
+    ? 'bg-emerald-50'
+    : 'bg-white/15';
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-3 px-5 py-3 rounded-xl font-semibold transition-all border text-sm md:text-base ${
+        active
+          ? 'bg-white text-emerald-700 border-white shadow-lg scale-[1.02]'
+          : 'bg-emerald-500/80 text-white border-emerald-400 hover:bg-emerald-400 hover:shadow-md'
+      }`}
+    >
+      <span className={`flex h-9 w-9 items-center justify-center rounded-lg overflow-hidden ${bgKotak}`}>
+        {pakaiLogo ? (
+          <img
+            src={imgSrc}
+            alt={imgAlt || label}
+            onError={() => setImgError(true)}
+            className="h-7 w-7 object-contain"
+          />
+        ) : (
+          Icon ? <Icon size={22} /> : null
+        )}
+      </span>
+      <span>{label}</span>
+    </button>
+  );
+};
 
 export const TopicIndex = ({ title, items, tone = 'emerald' }) => {
   const toneClass = tone === 'teal'

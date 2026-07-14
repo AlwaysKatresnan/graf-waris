@@ -1,7 +1,11 @@
 // logic/waris.js
 // Logika perhitungan waris Islam — fungsi murni tanpa React sehingga mudah diuji unit.
 
-export function hitungWaris(harta, ahliWaris) {
+export function hitungWaris(harta, ahliWaris, opsi = {}) {
+    // mode: 'jumhur' (default) memakai rasio 2:1 anak laki:perempuan.
+    // mode: 'muhammadiyah' membuat bagian anak perempuan tetap (tidak menyusut
+    // ketika jumlah anak laki-laki bertambah) — lihat blok ANAK di bawah.
+    const mode = opsi.mode || 'jumhur';
     const hasil = [];
     let sisaHarta = harta;
 
@@ -82,22 +86,40 @@ export function hitungWaris(harta, ahliWaris) {
     // ── ANAK ───────────────────────────────────────────────────────────────────
     if (adaAnak) {
       if (adaAnakLaki) {
-        // Ada anak laki → semua anak ashabah dengan rasio 2:1
-        const unitLaki = ahliWaris.anakLaki * 2;
-        const unitPr   = ahliWaris.anakPerempuan;
-        const totalUnit = unitLaki + unitPr;
         const hartaAnak = sisaHarta;
         const clr1 = ['#10b981','#059669','#047857','#065f46'];
         const clr2 = ['#06b6d4','#0891b2','#0e7490','#155e75'];
-        for (let i = 0; i < ahliWaris.anakLaki; i++) {
-          const b = (hartaAnak * 2) / totalUnit;
-          hasil.push({ id: `anak-laki-${i}`, nama: `Anak Laki ${i+1}`, bagian: b, persentase: (b/harta)*100, warna: clr1[i%4], fraksi: '2/n' });
+        if (mode === 'muhammadiyah' && ahliWaris.anakPerempuan > 0) {
+          // ATURAN MUHAMMADIYAH (Majelis Tarjih):
+          // Bagian anak perempuan TETAP dan tidak berkurang meski jumlah anak
+          // laki-laki bertambah. Kelompok anak laki-laki menerima 2 unit tetap
+          // (setara 2 anak perempuan) lalu dibagi rata; tiap anak perempuan 1 unit.
+          const totalUnit = 2 + ahliWaris.anakPerempuan;
+          const hartaLakiTotal = (hartaAnak * 2) / totalUnit;
+          const bPerLaki = hartaLakiTotal / ahliWaris.anakLaki;
+          for (let i = 0; i < ahliWaris.anakLaki; i++) {
+            hasil.push({ id: `anak-laki-${i}`, nama: `Anak Laki ${i+1}`, bagian: bPerLaki, persentase: (bPerLaki/harta)*100, warna: clr1[i%4], fraksi: 'Ashabah (2\u00f7n)' });
+          }
+          for (let i = 0; i < ahliWaris.anakPerempuan; i++) {
+            const b = hartaAnak / totalUnit;
+            hasil.push({ id: `anak-perempuan-${i}`, nama: `Anak Perempuan ${i+1}`, bagian: b, persentase: (b/harta)*100, warna: clr2[i%4], fraksi: '1 unit (tetap)' });
+          }
+          sisaHarta = 0;
+        } else {
+          // JUMHUR: semua anak ashabah bil-ghair dengan rasio 2:1
+          const unitLaki = ahliWaris.anakLaki * 2;
+          const unitPr   = ahliWaris.anakPerempuan;
+          const totalUnit = unitLaki + unitPr;
+          for (let i = 0; i < ahliWaris.anakLaki; i++) {
+            const b = (hartaAnak * 2) / totalUnit;
+            hasil.push({ id: `anak-laki-${i}`, nama: `Anak Laki ${i+1}`, bagian: b, persentase: (b/harta)*100, warna: clr1[i%4], fraksi: '2/n' });
+          }
+          for (let i = 0; i < ahliWaris.anakPerempuan; i++) {
+            const b = hartaAnak / totalUnit;
+            hasil.push({ id: `anak-perempuan-${i}`, nama: `Anak Perempuan ${i+1}`, bagian: b, persentase: (b/harta)*100, warna: clr2[i%4], fraksi: '1/n' });
+          }
+          sisaHarta = 0;
         }
-        for (let i = 0; i < ahliWaris.anakPerempuan; i++) {
-          const b = hartaAnak / totalUnit;
-          hasil.push({ id: `anak-perempuan-${i}`, nama: `Anak Perempuan ${i+1}`, bagian: b, persentase: (b/harta)*100, warna: clr2[i%4], fraksi: '1/n' });
-        }
-        sisaHarta = 0;
       } else {
         // Hanya anak perempuan
         const clr = ['#06b6d4','#0891b2','#0e7490','#155e75'];
@@ -407,4 +429,10 @@ export function daftarAhliWaris(ahliWaris, hitungWaris) {
         hijabSdrSeibu ? 'Terhijab oleh Ayah / Kakek / Ibu / Keturunan' : null);
 
     return daftar;
+}
+
+// Aturan Majelis Tarjih Muhammadiyah untuk bagian anak (perempuan tetap).
+// Hanya blok ANAK yang berbeda dari jumhur; sisanya identik.
+export function hitungWarisMuhammadiyah(harta, ahliWaris) {
+  return hitungWaris(harta, ahliWaris, { mode: 'muhammadiyah' });
 }

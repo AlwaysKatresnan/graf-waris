@@ -1,10 +1,11 @@
 // WarisApp.jsx
 import React, { useState } from 'react';
-import { BookMarked, Network, GitBranch, Users } from 'lucide-react';
+import { BookMarked, Network, GitBranch, Users, Calculator } from 'lucide-react';
 import { NavButton } from './components/ui.jsx';
 import { HalamanVisualisasi } from './pages/HalamanVisualisasi.jsx';
 import { HalamanMateri } from './pages/HalamanMateri.jsx';
 import { HalamanMateriGraf } from './pages/HalamanMateriGraf.jsx';
+import { HalamanKalkulatorMuhammadiyah } from './pages/HalamanKalkulatorMuhammadiyah.jsx';
 
 const WarisAppLengkap = () => {
   const [halamanAktif, setHalamanAktif] = useState('visualisasi');
@@ -33,10 +34,12 @@ const WarisAppLengkap = () => {
               <NavButton active={halamanAktif === 'materi'} onClick={() => setHalamanAktif('materi')} icon={BookMarked} label="Materi Waris" />
               <NavButton active={halamanAktif === 'materiGraf'} onClick={() => setHalamanAktif('materiGraf')} icon={Network} label="Materi Graf" />
               <NavButton active={halamanAktif === 'visualisasi'} onClick={() => setHalamanAktif('visualisasi')} icon={GitBranch} label="Visualisasi Graf" />
+              <NavButton active={halamanAktif === 'muhammadiyah'} onClick={() => setHalamanAktif('muhammadiyah')} icon={Calculator} imgSrc="/logo-muhammadiyah.png" imgAlt="Logo Muhammadiyah" label="Kalkulator Muhammadiyah" />
             </div>
           </div>
 
           {halamanAktif === 'visualisasi' && <HalamanVisualisasi />}
+          {halamanAktif === 'muhammadiyah' && <HalamanKalkulatorMuhammadiyah />}
           {halamanAktif === 'materi'      && <HalamanMateri />}
           {halamanAktif === 'materiGraf'  && <HalamanMateriGraf />}
         </div>

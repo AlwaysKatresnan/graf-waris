@@ -1,11 +1,15 @@
 // pages/HalamanVisualisasi.jsx
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
-import { Network, PanelRightClose, PanelRightOpen } from 'lucide-react';
+import { Network, PanelRightClose, PanelRightOpen, Info } from 'lucide-react';
 import { InputSection, Checkbox, NumberInput } from '../components/ui.jsx';
 import { hitungWaris, daftarAhliWaris } from '../logic/waris.js';
 
-export const HalamanVisualisasi = () => {
+export const HalamanVisualisasi = ({
+  hitungFn = hitungWaris,
+  judul = 'Visualisasi Graf Pembagian Waris',
+  keterangan = null,
+} = {}) => {
   const [harta, setHarta] = useState(100000000);
   const [ahliWaris, setAhliWaris] = useState({
     istri: false, suami: false, ayah: false, ibu: false,
@@ -24,9 +28,9 @@ export const HalamanVisualisasi = () => {
   }, []);
 
   const semuaAhliWaris = useMemo(() => {
-    const hasilHitung = hitungWaris(harta, ahliWaris);
+    const hasilHitung = hitungFn(harta, ahliWaris);
     return daftarAhliWaris(ahliWaris, hasilHitung);
-  }, [harta, ahliWaris]);
+  }, [harta, ahliWaris, hitungFn]);
 
   const svgRef = useRef(null);
 
@@ -421,10 +425,16 @@ export const HalamanVisualisasi = () => {
               <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold mb-3">
                 <Network size={15} /> HASIL VISUALISASI GRAF
               </div>
-              <h2 className="text-2xl font-bold text-slate-900">Visualisasi Graf Pembagian Waris</h2>
+              <h2 className="text-2xl font-bold text-slate-900">{judul}</h2>
               <p className="text-sm text-slate-500 mt-1 max-w-2xl">
                 Node menunjukkan ahli waris, edge menunjukkan relasi keluarga, dan warna menunjukkan status pembagian warisan.
               </p>
+              {keterangan && (
+                <div className="mt-3 flex items-start gap-2 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-lg px-3 py-2 text-sm max-w-2xl">
+                  <Info size={16} className="mt-0.5 shrink-0" />
+                  <span>{keterangan}</span>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-wrap items-center gap-3">
